@@ -1,6 +1,8 @@
 # GifList
 MVVM - LiveData
 
+RXJava - searchEditText
+
 mp3 service implementation with binding & orintation change
 
 volley network
