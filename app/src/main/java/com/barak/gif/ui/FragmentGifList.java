@@ -13,8 +13,6 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -29,8 +27,15 @@ import com.barak.gif.app.App;
 import com.barak.gif.model.Gif;
 import com.barak.gif.model.MyViewModelFactory;
 import com.barak.gif.network.ConnectivityHelper;
+import com.jakewharton.rxbinding2.widget.RxTextView;
+import com.jakewharton.rxbinding2.widget.TextViewTextChangeEvent;
 
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.observers.DisposableObserver;
 
 import static com.barak.gif.ui.GifActivity.LINK;
 
@@ -49,6 +54,7 @@ public class FragmentGifList extends Fragment implements ActionInterface, Recycl
     private SwipeRefreshLayout mySwipeRefreshLayout;
     private int mPage = 0;
     private EditText mEditSearch;
+    private Disposable _disposable;
 
     public void onAttach(Context context) {
         super.onAttach(context);
@@ -81,8 +87,12 @@ public class FragmentGifList extends Fragment implements ActionInterface, Recycl
         errorTextView = view.findViewById(R.id.text_e);
         mySwipeRefreshLayout = view.findViewById(R.id.swiperefresh);
         mEditSearch = view.findViewById(R.id.edit_text);
-        mEditSearch.addTextChangedListener(mTextWatcher);
-        mEditSearch.requestFocus();
+        _disposable =
+                RxTextView.textChangeEvents(mEditSearch)
+                        .debounce(400, TimeUnit.MILLISECONDS) // default Scheduler is Computation
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(_getSearchObserver());
+
         mySwipeRefreshLayout.setEnabled(false);
 
         recyclerView = view.findViewById(R.id.recycler_view);
@@ -93,38 +103,41 @@ public class FragmentGifList extends Fragment implements ActionInterface, Recycl
         recyclerView.setAdapter(adapter);
     }
 
-    private TextWatcher mTextWatcher = new TextWatcher() {
-        @Override
-        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+    private DisposableObserver<TextViewTextChangeEvent> _getSearchObserver() {
+        return new DisposableObserver<TextViewTextChangeEvent>() {
+            @Override
+            public void onComplete() {
 
-        }
+            }
 
-        @Override
-        public void onTextChanged(CharSequence s, int start, int before, int count) {
-            if (s.length() == 0) {
-                mArticles.clear();
-                adapter.notifyDataSetChanged();
-            } else {
-                if (!ConnectivityHelper.isConnectedToNetwork(App.getInstance().getApplicationContext())) {
-                    Snackbar.make(recyclerView, getString(R.string.no_record), Snackbar.LENGTH_LONG).show();
-                    return;
-                }
-                mArticles.clear();
-                mySwipeRefreshLayout.setRefreshing(true);
-                mPage = 0;
-                if (articleModel == null) {
-                    modelConfig(mEditSearch.getText().toString() + "&offset=" + mPage++);
+            @Override
+            public void onError(Throwable e) {
+
+            }
+
+            @Override
+            public void onNext(TextViewTextChangeEvent onTextChangeEvent) {
+                if (mEditSearch.length() == 0) {
+                    mArticles.clear();
+                    adapter.notifyDataSetChanged();
                 } else {
-                    articleModel.refreshData(mEditSearch.getText().toString() + "&offset=" + mPage++);
+                    if (!ConnectivityHelper.isConnectedToNetwork(App.getInstance().getApplicationContext())) {
+                        Snackbar.make(recyclerView, getString(R.string.no_record), Snackbar.LENGTH_LONG).show();
+                        return;
+                    }
+                    mArticles.clear();
+                    mySwipeRefreshLayout.setRefreshing(true);
+                    mPage = 0;
+                    if (articleModel == null) {
+                        modelConfig(mEditSearch.getText().toString() + "&offset=" + mPage++);
+                    } else {
+                        articleModel.refreshData(mEditSearch.getText().toString() + "&offset=" + mPage++);
+                    }
                 }
             }
-        }
+        };
+    }
 
-        @Override
-        public void afterTextChanged(Editable s) {
-
-        }
-    };
 
     private void modelConfig(String pharam) {
         {
@@ -149,7 +162,6 @@ public class FragmentGifList extends Fragment implements ActionInterface, Recycl
                 adapter.notifyDataSetChanged();
             });
         }
-
     }
 
 
@@ -193,7 +205,7 @@ public class FragmentGifList extends Fragment implements ActionInterface, Recycl
         mySwipeRefreshLayout = null;
         errorTextView = null;
         mEditSearch = null;
-
+        _disposable.dispose();
         super.onDestroyView();
     }
 
@@ -237,7 +249,12 @@ public class FragmentGifList extends Fragment implements ActionInterface, Recycl
             transaction.commit();
             return true;
         }
-
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mEditSearch.requestFocus();
     }
 }
