@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">GIF</string>
+    <string name="action_settings">Local</string>
+
+
+
+    <string name="submit">Yes</string>
+    <string name="submit_delete">Delete</string>
+    <string name="submit_share">Share</string>
+    <string name="main_7_m">http://www.inn.co.il/Rss.aspx</string>
+    <string name="no_record">Connection Error</string>
+        <string name="notif_download_end">Download ended</string>
+    <string name="delete">Delete or Share</string>
+    <string name="delete_text">Are you Sure?</string>
+    <string name="download_title">Download File</string>
+    <string name="download_text">Are you Sure?</string>
+    <string name="filter">search</string>
+
+
+</resources>
