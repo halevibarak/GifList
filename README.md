@@ -1,5 +1,5 @@
 # GifList
-MVVM - LiveData
+MVVM - LiveData - pass String to ViewModel
 
 RXJava - searchEditText
 
